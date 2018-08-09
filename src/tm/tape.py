@@ -1,29 +1,12 @@
 #!/usr/bin/env python
 
-# Tape symbol
-class Symbol(object) :
-
-    def __init__(self, char) :
-        assert isinstance(char, str)
-        self.char = char
-
-    def __eq__(self, other) :
-        return self.char == other.char
-
-    def __ne__(self, other) :
-        return not self.__eq__(other)
-
-    def __hash__(self) :
-        return hash(self.char)
-
-    def __repr__(self) :
-        return self.char
+from src.token.token import BLANK_TOKEN, L_TOKEN, R_TOKEN
 
 # Infinite tape representing memory
 class Tape(object) :
 
     def __init__(self, symbols) :
-        self.symbols = symbols if symbols else [BLANK]
+        self.symbols = list(symbols) if symbols else [BLANK_TOKEN]
         self.pos = 0
 
     # Get symbol at current position
@@ -36,25 +19,19 @@ class Tape(object) :
 
     # Move head left or right
     def move(self, direction) :
-        if direction == L :
+        if direction == L_TOKEN :
             if self.pos == 0 :
-                self.symbols.insert(0, BLANK)
+                self.symbols.insert(0, BLANK_TOKEN)
             else :
                 self.pos -= 1
-        elif direction == R :
+        elif direction == R_TOKEN :
             if self.pos == len(self.symbols) - 1 :
-                self.symbols.append(BLANK)
+                self.symbols.append(BLANK_TOKEN)
             self.pos += 1
 
-    def __repr__(self) :
-        return ''.join(map(str, self.symbols))
+    def __str__(self) :
+        return ''.join(str(a) for a in self.symbols if a != BLANK_TOKEN)
 
     def __iter__(self) :
         for symbol in self.symbols :
             yield symbol
-
-# Tape constants
-BLANK = Symbol('')
-EPS = Symbol('eps')
-L = 'L'
-R = 'R'

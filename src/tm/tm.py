@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
-from src.exception.exception import TmException
 from transition import TransitionFunction
-from tape import Tape, Symbol, BLANK
+from tape import Tape
+from src.token.token import BLANK_TOKEN, EPS_TOKEN
+from src.exception.exception import TmException
 
 
 # TM state
 class State(object) :
 
     def __init__(self, name) :
-        assert isinstance(name, str)
-        self.name = name
+        self.name = str(name)
 
     def __eq__(self, other) :
         return self.name == other.name
@@ -49,7 +49,7 @@ class TuringMachine(object) :
         self.startState = state
 
     # Define accepting (end) states
-    def addAccceptStates(self, states) :
+    def addAcceptStates(self, states) :
         states = _setMap(State, states)
         self.states.update(states)
         self.acceptStates.update(states)
@@ -60,19 +60,26 @@ class TuringMachine(object) :
         return states
 
     def _updateAlphabet(self, symbols) :
-        symbols = _setMap(Symbol, symbols)
-        self.alphabet.update(symbols)
-        return symbols
+        new_symbols = set()
+        for a in symbols :
+            if a == BLANK_TOKEN :
+                new_symbols.add(BLANK_TOKEN)
+            elif a == EPS_TOKEN :
+                new_symbols.add(EPS_TOKEN)
+            else :
+                new_symbols.add(a)
+                self.alphabet.add(a)
+        return new_symbols
 
     # Run Turing machine on provided input, return output string
     def run(self, symbols = [], debug = False) :
-        tape = Tape(map(Symbol, symbols))
+        tape = Tape(symbols)
         self._run(tape, debug)
         return str(tape)
 
     # Run Turing machine on provided input, return true if TM accepts input
     def accept(self, symbols = [], debug = False) :
-        tape = Tape(map(Symbol, symbols))
+        tape = Tape(symbols)
         endState = self._run(tape, debug)
         return endState in self.acceptStates
 
@@ -128,4 +135,4 @@ def _printDebug(tape, state, i) :
     print 'Configuration in iteration {}:'.format(i)
     print 4 * tape.pos * ' ' + str(state)
     print 4 * tape.pos * ' ' + ' V'
-    print ' ' + ' | '.join(' ' if a == BLANK else str(a) for a in tape) + '\n'
+    print ' ' + ' | '.join(' ' if a == BLANK_TOKEN else str(a) for a in tape) + '\n'

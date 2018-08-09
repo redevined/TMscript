@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 from test import Test
-from src.parser.tokenizer import tokenize
-from src.parser.token import ControlToken, IdentToken, StringToken
+from src.token.tokenizer import tokenize
+from src.token.token import ControlToken, IdentToken, StringToken
 from src.exception.exception import ParserException
 
 @Test
@@ -63,7 +63,6 @@ def exampleDeclarationTest() :
     ({q0, q1}, "a") -> (q1, "b", R)
     '''
     tokens = tokenize(src)
-    print tokens
     assert len([t for t in tokens if isinstance(t, ControlToken)]) == 11
     assert len([t for t in tokens if isinstance(t, IdentToken)]) == 4
     assert len([t for t in tokens if isinstance(t, StringToken)]) == 2

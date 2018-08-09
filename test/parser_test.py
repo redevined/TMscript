@@ -2,7 +2,7 @@
 
 from test import Test
 from src.parser.llkparser import parse
-from src.parser.token import ControlToken, IdentToken, StringToken
+from src.token.token import ControlToken, IdentToken, StringToken
 
 @Test
 def exampleTest() :

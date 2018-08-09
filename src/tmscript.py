@@ -5,7 +5,7 @@ from src.tm.tm import TuringMachine
 from src.parser.llkparser import parse
 
 def main(path, debug, accept, printable) :
-    return 0
+    return 0 # TODO
 
 def parseArgs() :
     argparser = ArgumentParser(description = 'Command line utility for TMscript')

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from tokenizer import tokenize
-from token import ControlToken, IdentToken, StringToken, BLANK_TOKEN, EPS_TOKEN, L_TOKEN, N_TOKEN, R_TOKEN
+from src.token.tokenizer import tokenize
+from src.token.token import ControlToken, IdentToken, StringToken, BLANK_TOKEN, EPS_TOKEN, L_TOKEN, N_TOKEN, R_TOKEN
 from src.exception.exception import ParserException
 
 # Parse given source code into a list of declarations (as dictionaries)
@@ -22,7 +22,7 @@ def _parseDeclarations(tokens) :
     return len(tokens) == 0, tokens, list()
 
 # Dec ::= ( In ) -> ( Out )
-def _parseDeclaration(tokens) :
+def _parseDeclaration(tokens) : # TODO parse start state declarations and accepting state declarations
     found, unparsed = _parseControlToken(tokens, '(')
     if not found :
         return False, tokens, dict()
@@ -123,7 +123,7 @@ def _parseState(tokens) :
     return False, tokens, None
 
 # Symbol
-def _parseSymbol(tokens) :
+def _parseSymbol(tokens) : # TODO don't allow eps on right side of a declaration
     if len(tokens) > 0 :
         token = tokens[0]
         if isinstance(token, StringToken) or token in (BLANK_TOKEN, EPS_TOKEN) :

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from tape import EPS
+from src.token.token import EPS_TOKEN
 from src.exception.exception import TmException
 
 # Function for state transitions
@@ -41,10 +41,10 @@ class TransitionFunction(object) :
         resultStates = {q for (q, a, m) in result}
         for q in resultStates :
             # Update result with the epsilon closure of epsilon transition results
-            if self.index.has_key(q) and self.index[q].has_key(EPS) :
+            if self.index.has_key(q) and self.index[q].has_key(EPS_TOKEN) :
                 result.update(
                     self._epsClosure(
-                        self.index[q][EPS]()))
+                        self.index[q][EPS_TOKEN]()))
         return result
 
     def __repr__(self) :
