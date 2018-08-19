@@ -4,15 +4,12 @@ from src.token.tokenizer import tokenize
 from src.token.token import ControlToken, IdentToken, StringToken, BLANK_TOKEN, EPS_TOKEN, L_TOKEN, N_TOKEN, R_TOKEN
 from src.exception.exception import ParserException
 
-# TODO don't allow eps on right side of a declaration
-# TODO better parser error messages
-
 # Parse given source code into a list of declarations (as dictionaries)
 def parse(src) :
     tokens = tokenize(src)
     success, unparsed, declarations = parseDeclarations(tokens)
     if not success :
-        raise ParserException('not a declaration')
+        raise ParserException('not a declaration: invalid token {} in line {}'.format(unparsed[0], unparsed[0].getLineNumber()))
     return declarations
 
 # Decs ::= Dec Decs | empty
@@ -22,7 +19,7 @@ def parseDeclarations(tokens) :
         found, unparsed, parsedDecs = parseDeclarations(unparsed)
         if found :
             return True, unparsed, parsedDecs + [parsedDec]
-    return len(tokens) == 0, tokens, list()
+    return len(tokens) == 0, unparsed, list()
 
 # Dec ::= StartDec | EndDec | ( In ) -> ( Out )
 def parseDeclaration(tokens) :
@@ -34,25 +31,25 @@ def parseDeclaration(tokens) :
         return True, unparsed, dec
     found, unparsed = parseControlToken(tokens, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed, parsedInStates, parsedInSymbols = parseStatesSymbols(unparsed)
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '->')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed, parsedOutStates, parsedOutSymbols, parsedMovement = parseStatesSymbolsMovement(unparsed)
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     return True, unparsed, {
         'inStates': parsedInStates,
         'inSymbols': parsedInSymbols,
@@ -65,22 +62,22 @@ def parseDeclaration(tokens) :
 def parseStartDeclaration(tokens) :
     found, unparsed = parseControlToken(tokens, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '->')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed, parsedState = parseState(unparsed)
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     return True, unparsed, {
         'inStates': set(),
         'inSymbols': set(),
@@ -93,22 +90,22 @@ def parseStartDeclaration(tokens) :
 def parseEndDeclaration(tokens) :
     found, unparsed = parseControlToken(tokens, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed, parsedStates = parseStateSet(unparsed)
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '->')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, '(')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     found, unparsed = parseControlToken(unparsed, ')')
     if not found :
-        return False, tokens, dict()
+        return False, unparsed, dict()
     return True, unparsed, {
         'inStates': parsedStates,
         'inSymbols': set(),
@@ -133,7 +130,7 @@ def parseStatesSymbols(tokens) :
     found, unparsed, parsedSymbols = parseSymbolSet(tokens)
     if found :
         return True, unparsed, set(), parsedSymbols
-    return False, tokens, set(), set()
+    return False, unparsed, set(), set()
 
 # SSM ::= SS , Movements | SS | Movements
 def parseStatesSymbolsMovement(tokens) :
@@ -152,7 +149,7 @@ def parseStatesSymbolsMovement(tokens) :
     found, unparsed, parsedMovements = parseMovementSet(tokens)
     if found :
         return True, unparsed, set(), set(), parsedMovements
-    return False, tokens, set(), set(), set()
+    return False, unparsed, set(), set(), set()
 
 # States ::= State | { State AddStates }
 def parseStateSet(tokens) :
@@ -214,7 +211,7 @@ def _parseXSet(tokens, parseX) :
                 found, unparsed = parseControlToken(unparsed, '}')
                 if found :
                     return True, unparsed, {parsedX}.union(parsedXSet)
-    return False, tokens, set()
+    return False, unparsed, set()
 
 # AddStates ::= , State AddStates
 # AddSymbols ::= , Symbol AddSymbols

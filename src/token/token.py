@@ -3,6 +3,12 @@
 # Base token class
 class Token(str) :
 
+    def setLineNumber(self, line) :
+        self.line = line
+
+    def getLineNumber(self) :
+        return self.line if hasattr(self, 'line') else None
+
     def __repr__(self) :
         return '{}(\'{}\')'.format(self.__class__.__name__, str(self))
 

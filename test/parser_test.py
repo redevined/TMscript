@@ -76,7 +76,7 @@ def invalidDeclarationsTest() :
     for src in srcs :
         try :
             parse(src)
-        except ParserException :
+        except ParserException as e :
             pass
         else :
             print src

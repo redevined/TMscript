@@ -8,28 +8,39 @@ from src.exception.exception import ParserException
 def tokenize(src) :
     tokens = list()
     pos = 0
+    line = 1
     while pos < len(src) :
         char = src[pos]
-        if char in (' ', '\t', '\n') :
+        if char in (' ', '\t') :
             pass
+        elif char == '\n' :
+            line += 1
         elif char == '#' :
             pos = _ignoreComment(src, pos)
         elif char in ('(', ')', '{', '}', ',') :
-            tokens.append(ControlToken(char))
+            t = ControlToken(char)
+            t.setLineNumber(line)
+            tokens.append(t)
         elif char == '-' and src[pos + 1] == '>' :
-            tokens.append(ControlToken('->'))
+            t = ControlToken('->')
+            t.setLineNumber(line)
+            tokens.append(t)
             pos += 1
         elif re.match(r'[A-Za-z_]', char) :
             token, pos = _tokenizeIdent(src, pos)
-            tokens.append(IdentToken(token))
+            t = IdentToken(token)
+            t.setLineNumber(line)
+            tokens.append(t)
         elif char in ('\'', '"') :
             try :
                 token, pos = _tokenizeString(src, pos)
             except IndexError :
-                raise ParserException('unterminated string token')
-            tokens.append(StringToken(token))
+                raise ParserException('unterminated string token in line {}'.format(line))
+            t = StringToken(token)
+            t.setLineNumber(line)
+            tokens.append(t)
         else :
-            raise ParserException('unknown token {}'.format(char))
+            raise ParserException('unknown token {} in line {}'.format(char, line))
         pos += 1
     return tokens
 
