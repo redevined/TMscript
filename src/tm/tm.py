@@ -6,7 +6,6 @@ from src.token.token import BLANK_TOKEN, EPS_TOKEN
 from src.exception.exception import TmException
 
 # TODO implement non-deterministic behavior
-# TODO pretty print tm
 
 # Class for assembling and running the TM
 class TuringMachine(object) :

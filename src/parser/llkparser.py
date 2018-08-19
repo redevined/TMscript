@@ -5,46 +5,52 @@ from src.token.token import ControlToken, IdentToken, StringToken, BLANK_TOKEN, 
 from src.exception.exception import ParserException
 
 # TODO don't allow eps on right side of a declaration
-# TODO parse start state declarations and accepting state declarations separate
+# TODO better parser error messages
 
 # Parse given source code into a list of declarations (as dictionaries)
 def parse(src) :
     tokens = tokenize(src)
-    success, unparsed, declarations = _parseDeclarations(tokens)
+    success, unparsed, declarations = parseDeclarations(tokens)
     if not success :
         raise ParserException('not a declaration')
     return declarations
 
 # Decs ::= Dec Decs | empty
-def _parseDeclarations(tokens) :
-    found, unparsed, parsedDec = _parseDeclaration(tokens)
+def parseDeclarations(tokens) :
+    found, unparsed, parsedDec = parseDeclaration(tokens)
     if found :
-        found, unparsed, parsedDecs = _parseDeclarations(unparsed)
+        found, unparsed, parsedDecs = parseDeclarations(unparsed)
         if found :
             return True, unparsed, parsedDecs + [parsedDec]
     return len(tokens) == 0, tokens, list()
 
-# Dec ::= ( In ) -> ( Out )
-def _parseDeclaration(tokens) :
-    found, unparsed = _parseControlToken(tokens, '(')
+# Dec ::= StartDec | EndDec | ( In ) -> ( Out )
+def parseDeclaration(tokens) :
+    found, unparsed, dec = parseStartDeclaration(tokens)
+    if found :
+        return True, unparsed, dec
+    found, unparsed, dec = parseEndDeclaration(tokens)
+    if found :
+        return True, unparsed, dec
+    found, unparsed = parseControlToken(tokens, '(')
     if not found :
         return False, tokens, dict()
-    found, unparsed, parsedInStates, parsedInSymbols = _parseStatesSymbols(unparsed)
+    found, unparsed, parsedInStates, parsedInSymbols = parseStatesSymbols(unparsed)
     if not found :
         return False, tokens, dict()
-    found, unparsed = _parseControlToken(unparsed, ')')
+    found, unparsed = parseControlToken(unparsed, ')')
     if not found :
         return False, tokens, dict()
-    found, unparsed = _parseControlToken(unparsed, '->')
+    found, unparsed = parseControlToken(unparsed, '->')
     if not found :
         return False, tokens, dict()
-    found, unparsed = _parseControlToken(unparsed, '(')
+    found, unparsed = parseControlToken(unparsed, '(')
     if not found :
         return False, tokens, dict()
-    found, unparsed, parsedOutStates, parsedOutSymbols, parsedMovement = _parseStatesSymbolsMovement(unparsed)
+    found, unparsed, parsedOutStates, parsedOutSymbols, parsedMovement = parseStatesSymbolsMovement(unparsed)
     if not found :
         return False, tokens, dict()
-    found, unparsed = _parseControlToken(unparsed, ')')
+    found, unparsed = parseControlToken(unparsed, ')')
     if not found :
         return False, tokens, dict()
     return True, unparsed, {
@@ -55,70 +61,113 @@ def _parseDeclaration(tokens) :
         'movement': parsedMovement
     }
 
-# SS ::= States , Symbols | States | Symbols | empty
-def _parseStatesSymbols(tokens) :
-    found, unparsed_ws, parsedStates = _parseXSet(tokens, _parseState)
+# StartDec ::= ( ) -> ( State )
+def parseStartDeclaration(tokens) :
+    found, unparsed = parseControlToken(tokens, '(')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, ')')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, '->')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, '(')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed, parsedState = parseState(unparsed)
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, ')')
+    if not found :
+        return False, tokens, dict()
+    return True, unparsed, {
+        'inStates': set(),
+        'inSymbols': set(),
+        'outStates': {parsedState},
+        'outSymbols': set(),
+        'movement': set()
+    }
+
+# EndDec ::= ( States ) -> ( )
+def parseEndDeclaration(tokens) :
+    found, unparsed = parseControlToken(tokens, '(')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed, parsedStates = parseStateSet(unparsed)
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, ')')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, '->')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, '(')
+    if not found :
+        return False, tokens, dict()
+    found, unparsed = parseControlToken(unparsed, ')')
+    if not found :
+        return False, tokens, dict()
+    return True, unparsed, {
+        'inStates': parsedStates,
+        'inSymbols': set(),
+        'outStates': set(),
+        'outSymbols': set(),
+        'movement': set()
+    }
+
+# SS ::= States , Symbols | States | Symbols
+def parseStatesSymbols(tokens) :
+    # Parse states
+    found, unparsed_ws, parsedStates = parseStateSet(tokens)
     if found :
-        found, unparsed = _parseControlToken(unparsed_ws, ',')
+        found, unparsed = parseControlToken(unparsed_ws, ',')
         if found :
-            found, unparsed, parsedSymbols = _parseXSet(unparsed, _parseSymbol)
+            # Parse symbols
+            found, unparsed, parsedSymbols = parseSymbolSet(unparsed)
             if found :
                 return True, unparsed, parsedStates, parsedSymbols
         return True, unparsed_ws, parsedStates, set()
-    found, unparsed, parsedSymbols = _parseXSet(tokens, _parseSymbol)
+    # Parse symbols w/o states
+    found, unparsed, parsedSymbols = parseSymbolSet(tokens)
     if found :
         return True, unparsed, set(), parsedSymbols
-    return True, tokens, set(), set()
+    return False, tokens, set(), set()
 
-# SSM ::= SS , Movements | SS | Movements | empty
-def _parseStatesSymbolsMovement(tokens) :
-    found, unparsed_ws, parsedStates, parsedSymbols = _parseStatesSymbols(tokens)
-    # if (found):... is not viable here, because SS -> empty is possible and we want to check for movement in this case
-    if parsedStates or parsedSymbols :
-        found, unparsed = _parseControlToken(unparsed_ws, ',')
+# SSM ::= SS , Movements | SS | Movements
+def parseStatesSymbolsMovement(tokens) :
+    # Parse states and symbols
+    found, unparsed_ws, parsedStates, parsedSymbols = parseStatesSymbols(tokens)
+    # Assert that eps is not in symbols
+    if found and EPS_TOKEN not in parsedSymbols :
+        found, unparsed = parseControlToken(unparsed_ws, ',')
         if found :
-            found, unparsed, parsedMovements = _parseXSet(unparsed, _parseMovement)
+            # Parse movements
+            found, unparsed, parsedMovements = parseMovementSet(unparsed)
             if found :
                 return True, unparsed, parsedStates, parsedSymbols, parsedMovements
         return True, unparsed_ws, parsedStates, parsedSymbols, set()
-    found, unparsed, parsedMovements = _parseXSet(tokens, _parseMovement)
+    # Parse movements w/o states and symbols
+    found, unparsed, parsedMovements = parseMovementSet(tokens)
     if found :
         return True, unparsed, set(), set(), parsedMovements
-    return True, tokens, set(), set(), set()
+    return False, tokens, set(), set(), set()
 
 # States ::= State | { State AddStates }
-# Symbols ::= Symbol | { Symbol AddSymbols }
-# Movements ::= Movement | { Movement AddMovements }
-def _parseXSet(tokens, _parseX) :
-    found, unparsed, parsedX = _parseX(tokens)
-    if found :
-        return True, unparsed, {parsedX}
-    found, unparsed = _parseControlToken(tokens, '{')
-    if found :
-        found, unparsed, parsedX = _parseX(unparsed)
-        if found :
-            found, unparsed, parsedXSet = _parseAdditionalX(unparsed, _parseX)
-            if found :
-                found, unparsed = _parseControlToken(unparsed, '}')
-                if found :
-                    return True, unparsed, {parsedX}.union(parsedXSet)
-    return False, tokens, set()
+def parseStateSet(tokens) :
+    return _parseXSet(tokens, parseState)
 
-# AddStates ::= , State AddStates
-# AddSymbols ::= , Symbol AddSymbols
-# AddMovements ::= , Movement AddMovements
-def _parseAdditionalX(tokens, _parseX) :
-    found, unparsed = _parseControlToken(tokens, ',')
-    if found :
-        found, unparsed, parsedX = _parseX(unparsed)
-        if found :
-            found, unparsed, parsedXSet = _parseAdditionalX(unparsed, _parseX)
-            if found :
-                return True, unparsed, {parsedX}.union(parsedXSet)
-    return True, tokens, set()
+# Symbols ::= Symbol | { Symbol AddSymbols }
+def parseSymbolSet(tokens) :
+    return _parseXSet(tokens, parseSymbol)
+
+# Movements ::= Movement | { Movement AddMovements }
+def parseMovementSet(tokens) :
+    return _parseXSet(tokens, parseMovement)
 
 # State
-def _parseState(tokens) :
+def parseState(tokens) :
     if len(tokens) > 0 :
         token = tokens[0]
         if isinstance(token, IdentToken) and token not in (BLANK_TOKEN, EPS_TOKEN, L_TOKEN, N_TOKEN, R_TOKEN) :
@@ -126,7 +175,7 @@ def _parseState(tokens) :
     return False, tokens, None
 
 # Symbol
-def _parseSymbol(tokens) :
+def parseSymbol(tokens) :
     if len(tokens) > 0 :
         token = tokens[0]
         if isinstance(token, StringToken) or token in (BLANK_TOKEN, EPS_TOKEN) :
@@ -134,7 +183,7 @@ def _parseSymbol(tokens) :
     return False, tokens, None
 
 # Movement
-def _parseMovement(tokens) :
+def parseMovement(tokens) :
     if len(tokens) > 0 :
         token = tokens[0]
         if token in (L_TOKEN, N_TOKEN, R_TOKEN) :
@@ -142,9 +191,40 @@ def _parseMovement(tokens) :
     return False, tokens, None
 
 # ( | ) | { | } | , | ->
-def _parseControlToken(tokens, char) :
+def parseControlToken(tokens, char) :
     if len(tokens) > 0 :
         token = tokens[0]
         if token == ControlToken(char) :
             return True, tokens[1:]
     return False, tokens
+
+# States ::= State | { State AddStates }
+# Symbols ::= Symbol | { Symbol AddSymbols }
+# Movements ::= Movement | { Movement AddMovements }
+def _parseXSet(tokens, parseX) :
+    found, unparsed, parsedX = parseX(tokens)
+    if found :
+        return True, unparsed, {parsedX}
+    found, unparsed = parseControlToken(tokens, '{')
+    if found :
+        found, unparsed, parsedX = parseX(unparsed)
+        if found :
+            found, unparsed, parsedXSet = _parseAdditionalX(unparsed, parseX)
+            if found :
+                found, unparsed = parseControlToken(unparsed, '}')
+                if found :
+                    return True, unparsed, {parsedX}.union(parsedXSet)
+    return False, tokens, set()
+
+# AddStates ::= , State AddStates
+# AddSymbols ::= , Symbol AddSymbols
+# AddMovements ::= , Movement AddMovements
+def _parseAdditionalX(tokens, parseX) :
+    found, unparsed = parseControlToken(tokens, ',')
+    if found :
+        found, unparsed, parsedX = parseX(unparsed)
+        if found :
+            found, unparsed, parsedXSet = _parseAdditionalX(unparsed, parseX)
+            if found :
+                return True, unparsed, {parsedX}.union(parsedXSet)
+    return True, tokens, set()

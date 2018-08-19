@@ -3,6 +3,7 @@
 from test import Test
 from src.parser.llkparser import parse
 from src.token.token import ControlToken, IdentToken, StringToken
+from src.exception.exception import ParserException
 
 @Test
 def exampleTest() :
@@ -59,3 +60,24 @@ def epsDeclarationTest() :
     src = '(q, eps) -> (q, _, N)'
     dec = parse(src)[0]
     assert dec['inSymbols'] == {IdentToken('eps')}
+
+@Test
+def invalidDeclarationsTest() :
+    srcs = (
+        '(q, "a") -> ()',
+        '() -> ({q, p})',
+        '() -> (q, "a", R)',
+        '("a", q) -> (q)',
+        '(q, "a", L) -> (q)',
+        '(q) -> ("a", q)',
+        '(q) -> (q, "a", R, p)',
+        '(q) -> (q, eps)'
+    )
+    for src in srcs :
+        try :
+            parse(src)
+        except ParserException :
+            pass
+        else :
+            print src
+            assert 0 == 1
